@@ -1,0 +1,88 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #c4cdf8, #8a57bd);
+}
+
+.container {
+    width: 85%;
+    margin: 40px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #444;
+}
+
+.formulario {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+select, input {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th {
+    color: white;
+    padding: 12px;
+}
+
+td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Seagrega color a la tabla dependiendo del*/
+.tabla-ProductoA th { background: #2196F3; }
+.tabla-ProductoB th { background: #9C27B0; }
+.tabla-ProductoC th { background: #FF5722; }
+.tabla-ProductoD th { background: #009688; }
+.tabla-ProductoE th { background: #FFC107; }
+
+canvas {
+    margin-top: 30px;
+    background: #fafafa;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+h2 {
+    margin-top: 30px;
+    color: #555;
+}
+label {
+    font-weight: bold;
+}

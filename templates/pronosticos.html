@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pronóstico de Ventas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+    <h1> Sistema de Pronóstico de Ventas</h1>
+
+    <form method="POST" class="formulario">
+        <label>Producto</label>
+        <select name="producto">
+            {% for p in productos %}
+                <option value="{{p}}" {% if p == producto_seleccionado %}selected{% endif %}>
+                    {{p}}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Valor de N</label>
+        <input type="number" name="n" value="{{n}}" min="1">
+
+        <button type="submit">Calcular</button>
+    </form>
+
+    {% if resultados %}
+
+    <h2> Resultados </h2>
+
+    <table class="tabla-{{ producto_seleccionado.replace(' ', '') }}">
+        <tr>
+            <th>Producto</th>
+            <th>Pronóstico</th>
+            <th>MAPE</th>
+            <th>MAPE'</th>
+            <th>MSE</th>
+            <th>RMSE</th>
+        </tr>
+        <tr>
+            <td>{{ producto_seleccionado }}</td>
+            <td>{{ resultados.siguiente }}</td>
+            <td>{{ resultados.mape }}%</td>
+            <td>{{ resultados.mape_p }}%</td>
+            <td>{{ resultados.mse }}</td>
+            <td>{{ resultados.rmse }}</td>
+        </tr>
+    </table>
+
+    
+    <h2> Gráfica</h2>
+    <canvas id="grafica"></canvas>
+
+    <h2>Tabla de errores ({{ producto_seleccionado }} - N={{ n }})</h2>
+
+    
+    <table class="tabla-{{ producto_seleccionado.replace(' ', '') }}">
+        <tr>
+            <th>Periodo</th>
+            <th>Ventas reales</th>
+            <th>Pronóstico</th>
+            <th>Error</th>
+            <th>|Error|</th>
+            <th>Error²</th>
+        </tr>
+
+        {% for fila in resultados.tabla %}
+        <tr>
+            <td>{{ fila.periodo }}</td>
+            <td>{{ fila.real }}</td>
+            <td>{{ fila.pronostico if fila.pronostico != None else "-" }}</td>
+            <td>{{ fila.error if fila.error != None else "-" }}</td>
+            <td>{{ fila.abs_error if fila.abs_error != None else "-" }}</td>
+            <td>{{ fila.error_cuadrado if fila.error_cuadrado != None else "-" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    {% endif %}
+
+</div>
+
+<script>
+{% if resultados %}
+const labels = {{ periodos | tojson }};
+const reales = {{ resultados.tabla | map(attribute='real') | list | tojson }};
+const pronosticos = {{ resultados.tabla | map(attribute='pronostico') | list | tojson }};
+
+new Chart(document.getElementById("grafica"), {
+    type: "line",
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: "Ventas",
+                data: reales,
+                borderWidth: 3
+            },
+            {
+                label: "Pronóstico",
+                data: pronosticos,
+                borderWidth: 3
+            }
+        ]
+    }
+});
+{% endif %}
+</script>
+
+</body>
+</html>
