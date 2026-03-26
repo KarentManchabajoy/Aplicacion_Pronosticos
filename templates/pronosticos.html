@@ -1,115 +1,103 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Pronóstico de Ventas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<title>Pronósticos</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
 
+<body>
 <div class="container">
 
-    <h1> Sistema de Pronóstico de Ventas</h1>
+<h1> Sistema de Pronósticos</h1>
 
-    <form method="POST" class="formulario">
-        <label>Producto</label>
+<form method="POST" id="formPronostico" class="formulario">
+
+    <div class="grupo">
+        <label><b>Producto</b></label>
         <select name="producto">
-            {% for p in productos %}
-                <option value="{{p}}" {% if p == producto_seleccionado %}selected{% endif %}>
-                    {{p}}
-                </option>
-            {% endfor %}
-        </select>
-
-        <label>Valor de N</label>
-        <input type="number" name="n" value="{{n}}" min="1">
-
-        <button type="submit">Calcular</button>
-    </form>
-
-    {% if resultados %}
-
-    <h2> Resultados </h2>
-
-    <table class="tabla-{{ producto_seleccionado.replace(' ', '') }}">
-        <tr>
-            <th>Producto</th>
-            <th>Pronóstico</th>
-            <th>MAPE</th>
-            <th>MAPE'</th>
-            <th>MSE</th>
-            <th>RMSE</th>
-        </tr>
-        <tr>
-            <td>{{ producto_seleccionado }}</td>
-            <td>{{ resultados.siguiente }}</td>
-            <td>{{ resultados.mape }}%</td>
-            <td>{{ resultados.mape_p }}%</td>
-            <td>{{ resultados.mse }}</td>
-            <td>{{ resultados.rmse }}</td>
-        </tr>
-    </table>
-
-    
-    <h2> Gráfica</h2>
-    <canvas id="grafica"></canvas>
-
-    <h2>Tabla de errores ({{ producto_seleccionado }} - N={{ n }})</h2>
-
-    
-    <table class="tabla-{{ producto_seleccionado.replace(' ', '') }}">
-        <tr>
-            <th>Periodo</th>
-            <th>Ventas reales</th>
-            <th>Pronóstico</th>
-            <th>Error</th>
-            <th>|Error|</th>
-            <th>Error²</th>
-        </tr>
-
-        {% for fila in resultados.tabla %}
-        <tr>
-            <td>{{ fila.periodo }}</td>
-            <td>{{ fila.real }}</td>
-            <td>{{ fila.pronostico if fila.pronostico != None else "-" }}</td>
-            <td>{{ fila.error if fila.error != None else "-" }}</td>
-            <td>{{ fila.abs_error if fila.abs_error != None else "-" }}</td>
-            <td>{{ fila.error_cuadrado if fila.error_cuadrado != None else "-" }}</td>
-        </tr>
+        {% for p in productos %}
+        <option value="{{p}}" {% if producto == p %}selected{% endif %}>{{p}}</option>
         {% endfor %}
-    </table>
+        </select>
+    </div>
 
-    {% endif %}
+    <div class="grupo">
+        <label><b>Valor de N</b></label>
+        <input type="number" name="n" value="{{n}}">
+    </div>
 
+    <div class="grupo">
+        <label><b>Meses a pronosticar</b></label>
+        <input type="number" name="meses" value="{{meses}}">
+    </div>
+
+    <div class="grupo">
+        <label><b>Método</b></label>
+        <select name="metodo">
+            <option value="todos" {% if metodo=='todos' %}selected{% endif %}>Todos</option>
+            <option value="promedio" {% if metodo=='promedio' %}selected{% endif %}>Promedio</option>
+            <option value="ses" {% if metodo=='ses' %}selected{% endif %}>SES</option>
+            <option value="prophet" {% if metodo=='prophet' %}selected{% endif %}>Prophet</option>
+        </select>
+    </div>
+
+</form>
+
+<div class="card-fecha">
+Último mes registrado: {{ ultima_fecha }}
 </div>
 
-<script>
+<button type="submit" form="formPronostico" class="btn-calcular">Calcular</button>
+
 {% if resultados %}
-const labels = {{ periodos | tojson }};
-const reales = {{ resultados.tabla | map(attribute='real') | list | tojson }};
-const pronosticos = {{ resultados.tabla | map(attribute='pronostico') | list | tojson }};
+
+<table class="tabla-producto" style="--color-producto: {{ colores[producto] }}">
+<tr>
+<th>Producto</th><th>Modelo</th><th>Pronóstico</th><th>MAPE</th><th>MAPE'</th><th>MSE</th><th>RMSE</th>
+</tr>
+
+{% for c in comparacion %}
+<tr class="{% if mejor_modelo and c.modelo == mejor_modelo.modelo %}mejor{% endif %}">
+<td>{{c.producto}}</td>
+<td>{{c.modelo}}</td>
+<td>{{c.pronostico}}</td>
+<td>{{c.mape}}</td>
+<td>{{c.mape_p}}</td>
+<td>{{c.mse}}</td>
+<td>{{c.rmse}}</td>
+</tr>
+{% endfor %}
+</table>
+
+<canvas id="grafica"></canvas>
+
+<script>
+let labels = {{ periodos | tojson }};
+const reales = {{ resultados.reales | tojson }};
+const promedio = {{ resultados.promedio | tojson }};
+const ses = {{ resultados.ses | tojson }};
+const prophet = {{ resultados.prophet | tojson }};
+const colorProducto = "{{ colores[producto] }}";
 
 new Chart(document.getElementById("grafica"), {
     type: "line",
     data: {
         labels: labels,
         datasets: [
-            {
-                label: "Ventas",
-                data: reales,
-                borderWidth: 3
-            },
-            {
-                label: "Pronóstico",
-                data: pronosticos,
-                borderWidth: 3
-            }
+            { label: "Real", data: reales, borderColor: "#000" },
+
+            ...(promedio.length ? [{ label: "Promedio", data: promedio, borderColor: "#1abc9c" }] : []),
+            ...(ses.length ? [{ label: "SES", data: ses, borderColor: "#f39c12" }] : []),
+            ...(prophet.length ? [{ label: "Prophet", data: prophet, borderColor: colorProducto }] : [])
         ]
     }
 });
-{% endif %}
 </script>
 
+{% endif %}
+
+</div>
 </body>
 </html>

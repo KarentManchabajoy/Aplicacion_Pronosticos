@@ -1,88 +1,126 @@
+/*  FONDO GENERAL */
 body {
+    font-family: Arial;
+    background: linear-gradient(135deg, #667eea, #764ba2);
     margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #c4cdf8, #8a57bd);
+    padding: 0;
 }
 
+/*  CONTENEDOR PRINCIPAL */
 .container {
     width: 85%;
     margin: 40px auto;
     background: white;
     padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    box-shadow: 0px 10px 25px rgba(0,0,0,0.2);
 }
 
+/*  TÍTULO PRINCIPAL */
 h1 {
     text-align: center;
     margin-bottom: 25px;
-    color: #444;
 }
 
+/*  FORMULARIO */
 .formulario {
     display: flex;
+    gap: 20px;
     justify-content: center;
-    gap: 15px;
     flex-wrap: wrap;
-    margin-bottom: 20px;
 }
 
-select, input {
-    padding: 10px;
-    border-radius: 8px;
+/*  GRUPOS DEL FORM */
+.grupo {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+}
+
+/*  ETIQUETAS EN NEGRITA */
+.grupo label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* INPUTS Y SELECT */
+input, select {
+    padding: 8px;
+    border-radius: 5px;
     border: 1px solid #ccc;
 }
 
-button {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+/*  TARJETA DE FECHA */
+.card-fecha {
+    text-align: center;
+    margin-top: 20px;
+    padding: 15px;
+    background: #f4f6ff;
+    border-left: 5px solid #667eea;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* BOTÓN CALCULAR */
+.btn-calcular {
+    display: block;
+    margin: 25px auto;
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #ea82ff, #fd8fc4);
     color: white;
-    padding: 10px 18px;
+    font-weight: bold;
     border: none;
     border-radius: 8px;
     cursor: pointer;
+    transition: 0.3s;
 }
 
-table {
+/*  EFECTO HOVER BOTÓN */
+.btn-calcular:hover {
+    transform: scale(1.05);
+    background: linear-gradient(135deg, #ff6a4a, #fda763);
+}
+
+/* TABLA */
+.tabla-producto {
     width: 100%;
+    margin-top: 25px;
     border-collapse: collapse;
-    margin-top: 20px;
     border-radius: 10px;
     overflow: hidden;
+    border-top: 6px solid var(--color-producto);
 }
 
-th {
+/*  ENCABEZADO */
+.tabla-producto th {
+    background: var(--color-producto);
     color: white;
-    padding: 12px;
 }
 
-td {
+/*  CELDAS */
+td, th {
     padding: 10px;
     text-align: center;
-    border-bottom: 1px solid #ddd;
 }
 
-tr:hover {
-    background-color: #f5f5f5;
+/*  FILAS ALTERNAS */
+tr:nth-child(even) {
+    background-color: #f2f2f2;
 }
 
-/* Seagrega color a la tabla dependiendo del*/
-.tabla-ProductoA th { background: #2196F3; }
-.tabla-ProductoB th { background: #9C27B0; }
-.tabla-ProductoC th { background: #FF5722; }
-.tabla-ProductoD th { background: #009688; }
-.tabla-ProductoE th { background: #FFC107; }
 
+.tabla-producto tr:hover {
+    background-color: #f1f1f1;
+}
+
+/*  MEJOR MODELO */
+.mejor {
+    background-color: #d4edda !important;
+    font-weight: bold;
+    border-left: 6px solid #28a745;
+}
+
+/*  GRÁFICA */
 canvas {
     margin-top: 30px;
-    background: #fafafa;
-    padding: 15px;
-    border-radius: 10px;
-}
-
-h2 {
-    margin-top: 30px;
-    color: #555;
-}
-label {
-    font-weight: bold;
 }
