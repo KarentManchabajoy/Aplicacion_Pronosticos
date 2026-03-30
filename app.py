@@ -1,197 +1,155 @@
-from flask import Flask, render_template, request
 import pandas as pd
 import numpy as np
+from flask import Flask, render_template, request
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing
 from prophet import Prophet
+import logging
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+# Configuración para limpiar la consola 
+logging.getLogger('prophet').setLevel(logging.ERROR)
+logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
-colores = {
-    "Producto A": "#1abc9c",
-    "Producto B": "#3498db",
-    "Producto C": "#e67e22",
-    "Producto D": "#9b59b6",
-    "Producto E": "#e74c3c"
-}
+# Colores para las fichas 
+COLORES_BASE = ["#1abc9c", "#3498db", "#e67e22", "#9b59b6", "#f1c40f", "#e74c3c"]
 
-# PROMEDIO MÓVIL
+# 1. FUNCIÓN DE MÉTRICAS 
+def calcular_metricas(real, pred, n_inicio=3):
+    y_true = np.array(real[n_inicio:], dtype=float)
+    y_pred = np.array(pred[n_inicio:len(real)], dtype=float)
+    
+    mask = ~np.isnan(y_true) & ~np.isnan(y_pred)
+    y_true, y_pred = y_true[mask], y_pred[mask]
+    
+    if len(y_true) == 0:
+        return 0, 0, 0, 0
 
-def modelo_promedio(serie, n, periodos):
-    serie = pd.to_numeric(serie, errors='coerce').dropna().reset_index(drop=True)
-    pronostico = serie.rolling(window=n).mean().shift(1)
-    futuro = [serie.iloc[-n:].mean()] * periodos
-    return list(pronostico) + futuro
+    error = y_pred - y_true
+    error_abs = np.abs(error)
+    
+    # MAPE y MAPE' (evitando división por cero)
+    ape = error_abs / np.where(y_true == 0, 1e-10, y_true)
+    ape_p = error_abs / np.where(y_pred == 0, 1e-10, y_pred)
+    
+    error_cuadrado = error * error
 
+    # Medidas de error finales
+    MAPE = np.mean(ape)
+    MAPE_prima = np.mean(ape_p)
+    MSE = np.mean(error_cuadrado)
+    RMSE = MSE**0.5 
 
-
-# SES - statsmodels 
-def modelo_ses(serie, periodos):
-    serie = pd.to_numeric(serie, errors='coerce').dropna()
-    model = SimpleExpSmoothing(serie)
-    fit = model.fit()
-    return list(fit.fittedvalues) + list(fit.forecast(periodos))
-
-
-# PROPHET
-
-def modelo_prophet(df, columna, periodos):
-    data = pd.DataFrame({
-        "ds": pd.to_datetime(df.iloc[:, 0]),
-        "y": pd.to_numeric(df[columna])
-    }).dropna()
-
-    model = Prophet(yearly_seasonality=True, daily_seasonality=False)
-    model.fit(data)
-
-    future = model.make_future_dataframe(periods=periodos, freq='MS')
-    forecast = model.predict(future)
-
-    return forecast["yhat"].tolist()
+    return round(MAPE, 4), round(MAPE_prima, 4), round(MSE, 2), round(RMSE, 2)
 
 
-
-# MÉTRICAS
-
-def calcular_metricas(real, pred):
-
-    real = pd.to_numeric(pd.Series(real), errors='coerce')
-    pred = pd.to_numeric(pd.Series(pred), errors='coerce')
-
-    min_len = min(len(real), len(pred))
-    real = real[-min_len:]
-    pred = pred[-min_len:]
-
-    df = pd.DataFrame({
-        "real": real.values,
-        "pred": pred.values
-    })
-
-    df["error"] = df["pred"] - df["real"]
-    df["abs_error"] = df["error"].abs()
-
-    df["ape"] = df["abs_error"] / df["real"].replace(0, pd.NA)
-    df["ape_p"] = df["abs_error"] / df["pred"].replace(0, pd.NA)
-
-    df["error_cuadrado"] = df["error"] ** 2
-
-    mape = float(df["ape"].dropna().mean() * 100)
-    mape_p = float(df["ape_p"].dropna().mean() * 100)
-    mse = float(df["error_cuadrado"].dropna().mean())
-    rmse = float(np.sqrt(mse))
-
-    return mape, mape_p, mse, rmse
-
-
-# RUTA PRINCIPAL
-
+# 2. RUTA PRINCIPAL
 @app.route("/", methods=["GET", "POST"])
 def index():
-
+    # Carga de datos 
     df = pd.read_csv("ventas_productos.csv", sep=";")
-    productos = df.columns[1:]
-
-    ultima_fecha_dt = pd.to_datetime(df.iloc[:, 0]).max()
-    ultima_fecha = ultima_fecha_dt.strftime("%Y-%m")
-
-    resultados = None
-    comparacion = []
-    producto = None
-    n = 3
-    meses = 6
-    metodo = "todos"
+    productos_lista = list(df.columns[1:])
+    fechas_raw = pd.to_datetime(df.iloc[:, 0])
+    fechas_str = fechas_raw.dt.strftime("%Y-%m").tolist()
+    ultima_fecha_dt = fechas_raw.max()
+    
+    # Valores por defecto
+    fichas = []
+    prod_sel = productos_lista[0]
+    n, meses, metodo_sel = 3, 6, "todos"
+    mostrar_ganador = False
 
     if request.method == "POST":
+        prod_sel = request.form.get("producto")
+        n = int(request.form.get("n", 3))
+        meses = int(request.form.get("meses", 6))
+        metodo_sel = request.form.get("metodo", "todos")
+        mostrar_ganador = (metodo_sel == "todos")
 
-        producto = request.form.get("producto")
-        n = int(request.form.get("n"))
-        meses = int(request.form.get("meses"))
-        metodo = request.form.get("metodo")
+    # Generar etiquetas del eje X (Pasado + Futuro)
+    labels_eje_x = fechas_str.copy()
+    for i in range(1, meses + 1):
+        futuro = ultima_fecha_dt + relativedelta(months=i)
+        labels_eje_x.append(futuro.strftime("%Y-%m"))
 
-        serie = df[producto]
-        reales = pd.to_numeric(serie, errors='coerce').dropna().tolist()
+    # Procesar cada producto
+    for i, prod in enumerate(productos_lista):
+        serie = pd.to_numeric(df[prod], errors='coerce').fillna(0)
+        reales = serie.tolist()
+        
+        # --- CÁLCULOS DE MÉTODOS ---
+        
+        # 1. Promedio Móvil
+        p_prom = serie.rolling(window=n).mean().shift(1).bfill().tolist()
+        p_prom += [serie.iloc[-n:].mean()] * meses
+        
+        # 2. SES
+        try:
+            model_ses = SimpleExpSmoothing(reales, initialization_method="estimated").fit()
+            p_ses = list(model_ses.fittedvalues) + list(model_ses.forecast(meses))
+        except:
+            p_ses = [serie.mean()] * (len(reales) + meses)
+        
+        # 3. Prophet
+        df_p = pd.DataFrame({'ds': fechas_raw, 'y': serie})
+        try:
+            m_p = Prophet(yearly_seasonality='auto', weekly_seasonality=False, daily_seasonality=False)
+            m_p.fit(df_p)
+            future = m_p.make_future_dataframe(periods=meses, freq='MS')
+            p_prop = m_p.predict(future)['yhat'].tolist()
+        except:
+            p_prop = [serie.mean()] * (len(reales) + meses)
 
-        p_prom, p_ses, p_prop = [], [], []
+        # LÓGICA DE FILTRADO 
+        
+        # Lista con todos los cálculos posibles
+        todos_los_metodos = [
+            {"id": "promedio", "nombre": "Promedio Móvil", "m": calcular_metricas(reales, p_prom, n), "data": p_prom, "color": "#3498db"},
+            {"id": "suavizacion", "nombre": "Suavización Exponencial", "m": calcular_metricas(reales, p_ses, n), "data": p_ses, "color": "#e67e22"},
+            {"id": "prophet", "nombre": "Prophet", "m": calcular_metricas(reales, p_prop, n), "data": p_prop, "color": "#9b59b6"}
+        ]
 
-        if metodo in ["todos", "promedio"]:
-            p_prom = modelo_promedio(serie, n, meses)
+        mejor_abs = min(todos_los_metodos, key=lambda x: x["m"][3])
 
-        if metodo in ["todos", "ses"]:
-            p_ses = modelo_ses(serie, meses)
+        # Filtramos la lista que se enviará al HTML según la elección del usuario
+        if metodo_sel == "todos":
+            met_list = todos_los_metodos
+            seleccionado = mejor_abs
+        else:
+            # Filtramos para que solo quede el ID seleccionado
+            met_list = [m for m in todos_los_metodos if m["id"] == metodo_sel]
+            seleccionado = met_list[0]
 
-        if metodo in ["todos", "prophet"]:
-            p_prop = modelo_prophet(df, producto, meses)
+        fichas.append({
+            "nombre": prod, 
+            "color_base": COLORES_BASE[i % len(COLORES_BASE)],
+            "mejor": seleccionado, 
+            "mejor_nombre": mejor_abs["nombre"], # Siempre muestra el nombre del mejor real
+            "metodos": met_list, # Solo contiene los métodos filtrados
+            "reales": reales, 
+            "rmse_ganador": seleccionado["m"][3]
+        })
 
-        comparacion = []
+    # Mejor método (Solo si se comparan todos)
+    if mostrar_ganador and fichas:
+        mejor_ficha = min(fichas, key=lambda x: x["rmse_ganador"])
+        for f in fichas:
+            f["es_el_mejor_global"] = (f["nombre"] == mejor_ficha["nombre"])
 
-        if p_prom:
-            mape, mape_p, mse, rmse = calcular_metricas(reales, p_prom)
-            comparacion.append({"producto": producto, "modelo": "Promedio",
-                                "pronostico": round(p_prom[-1],2),
-                                "mape": f"{round(mape,2)}%",
-                                "mape_p": f"{round(mape_p,2)}%",
-                                "mse": round(mse,2), "rmse": round(rmse,2)})
-
-        if p_ses:
-            mape, mape_p, mse, rmse = calcular_metricas(reales, p_ses)
-            comparacion.append({"producto": producto, "modelo": "SES",
-                                "pronostico": round(p_ses[-1],2),
-                                "mape": f"{round(mape,2)}%",
-                                "mape_p": f"{round(mape_p,2)}%",
-                                "mse": round(mse,2), "rmse": round(rmse,2)})
-
-        if p_prop:
-            mape, mape_p, mse, rmse = calcular_metricas(reales, p_prop)
-            comparacion.append({"producto": producto, "modelo": "Prophet",
-                                "pronostico": round(p_prop[-1],2),
-                                "mape": f"{round(mape,2)}%",
-                                "mape_p": f"{round(mape_p,2)}%",
-                                "mse": round(mse,2), "rmse": round(rmse,2)})
-
-        mejor_modelo = min(comparacion, key=lambda x: x["rmse"]) if comparacion else None
-
-        resultados = {
-            "reales": reales,
-            "promedio": p_prom,
-            "ses": p_ses,
-            "prophet": p_prop
-        }
-
-        fechas = pd.to_datetime(df.iloc[:, 0]).tolist()
-        for i in range(meses):
-            fechas.append(fechas[-1] + pd.DateOffset(months=1))
-
-        labels = [f.strftime("%Y-%m") for f in fechas]
-
-        return render_template("pronosticos.html",
-                               productos=productos,
-                               periodos=labels,
-                               resultados=resultados,
-                               comparacion=comparacion,
-                               colores=colores,
-                               producto=producto,
-                               mejor_modelo=mejor_modelo,
-                               n=n,
-                               meses=meses,
-                               metodo=metodo,
-                               ultima_fecha=ultima_fecha)
-
-    return render_template("pronosticos.html",
-                           productos=productos,
-                           periodos=[],
-                           resultados=None,
-                           comparacion=[],
-                           colores=colores,
-                           producto=None,
-                           n=n,
-                           meses=meses,
-                           metodo=metodo,
-                           ultima_fecha=ultima_fecha)
-
-
-
-
-
-
+    return render_template(
+        "pronosticos.html",
+        productos=productos_lista,
+        fichas=fichas,
+        n=n,
+        meses=meses,
+        metodo_sel=metodo_sel,
+        labels=labels_eje_x, 
+        prod_sel=prod_sel,
+        ultima_fecha=fechas_str[-1],
+        mostrar_ganador=mostrar_ganador
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,126 +1,268 @@
-/*  FONDO GENERAL */
-body {
-    font-family: Arial;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    margin: 0;
-    padding: 0;
+
+:root {
+    --primary: #8d346a;    
+    --primary-dark: #5a0c3c;
+    --accent: #7cdef0;     
+    --purple-light: #f0eeff;
+    --purple-text: #7567e0;
+    --bg: #f3fffb;
+    --white: #ffffff;
 }
 
-/*  CONTENEDOR PRINCIPAL */
-.container {
-    width: 85%;
-    margin: 40px auto;
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0px 10px 25px rgba(0,0,0,0.2);
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: var(--bg); 
+    margin: 0; 
+    padding: 20px; 
+    color: #333; 
 }
 
-/*  TÍTULO PRINCIPAL */
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
+.container { 
+    max-width: 1400px; 
+    margin: auto; 
+    background: var(--white); 
+    padding: 30px; 
+    border-radius: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
 }
 
-/*  FORMULARIO */
-.formulario {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
+header { text-align: center; margin-bottom: 30px; }
+
+h1 { 
+    color: var(--primary-dark); 
+    margin: 0; 
+    font-size: 2.2rem; 
 }
 
-/*  GRUPOS DEL FORM */
-.grupo {
-    display: flex;
-    flex-direction: column;
-    min-width: 150px;
+/* FORMULARIO */
+.formulario { 
+    display: flex; 
+    gap: 15px; 
+    background: var(--primary); 
+    color: white; 
+    padding: 25px; 
+    border-radius: 15px; 
+    margin-bottom: 20px; 
+    justify-content: center; 
+    align-items: flex-end; 
+    flex-wrap: wrap; 
 }
 
-/*  ETIQUETAS EN NEGRITA */
-.grupo label {
-    font-weight: bold;
-    margin-bottom: 5px;
+.grupo { display: flex; flex-direction: column; gap: 5px; }
+
+.grupo label { 
+    font-size: 0.7rem; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    opacity: 0.9; 
 }
 
-/* INPUTS Y SELECT */
-input, select {
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+.formulario select, .formulario input { 
+    padding: 10px; 
+    border-radius: 8px; 
+    border: none; 
+    font-size: 0.9rem;
+    outline: none;
 }
 
-/*  TARJETA DE FECHA */
-.card-fecha {
-    text-align: center;
-    margin-top: 20px;
-    padding: 15px;
-    background: #f4f6ff;
-    border-left: 5px solid #667eea;
-    border-radius: 10px;
-    font-weight: bold;
+/* BOTÓN CON DEGRADADO INTEGRADO */
+.btn-calc { 
+    background: linear-gradient(135deg, #df89e7 0%, #eb63a5f5 100%); 
+    color: white; 
+    border: none; 
+    padding: 12px 30px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(141, 52, 106, 0.3);
 }
 
-/* BOTÓN CALCULAR */
-.btn-calcular {
-    display: block;
-    margin: 25px auto;
-    padding: 12px 25px;
-    background: linear-gradient(135deg, #ea82ff, #fd8fc4);
-    color: white;
-    font-weight: bold;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.3s;
+.btn-calc:hover { 
+    transform: translateY(-2px); 
+    filter: brightness(1.1);
+    box-shadow: 0 6px 20px rgba(141, 52, 106, 0.5); 
 }
 
-/*  EFECTO HOVER BOTÓN */
-.btn-calcular:hover {
-    transform: scale(1.05);
-    background: linear-gradient(135deg, #ff6a4a, #fda763);
+.info-corte { 
+    text-align: center; 
+    background: var(--white); 
+    color: var(--primary); 
+    padding: 12px; 
+    border-radius: 10px; 
+    margin-bottom: 35px; 
+    border: 1px dashed var(--primary); 
+    font-size: 0.9rem;
 }
 
-/* TABLA */
-.tabla-producto {
-    width: 100%;
-    margin-top: 25px;
+/* FICHAS (TARJETAS) */
+.grid-fichas { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
+    gap: 30px; 
+}
+
+.card { 
+    background: var(--white); 
+    border: 1px solid #eee; 
+    padding: 25px; 
+    border-radius: 20px; 
+    position: relative; 
+    transition: transform 0.3s ease;
+}
+
+.card-head { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 15px; 
+}
+
+.mejor-metodo { 
+    font-size: 0.7rem; 
+    color: var(--purple-text); 
+    background: var(--purple-light); 
+    padding: 5px 12px; 
+    border-radius: 15px; 
+    font-weight: bold; 
+}
+
+.stats { 
+    display: flex; 
+    justify-content: space-around; 
+    margin: 20px 0; 
+    background: #f9f9f9; 
+    padding: 15px; 
+    border-radius: 12px; 
+}
+
+.s-item strong { 
+    display: block; 
+    font-size: 1.4rem; 
+    color: var(--primary); 
+}
+
+.s-item small { 
+    color: #95a5a6; 
+    font-size: 0.65rem; 
+    text-transform: uppercase; 
+}
+
+.chart-container { 
+    position: relative; 
+    height: 300px; 
+    width: 100%; 
+    margin: 15px 0; 
+}
+
+/* TABLA DENTRO DE LA FICHA */
+.tabla-f table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.8rem; 
+    margin-top: 15px; 
+}
+
+.tabla-f th { border-bottom: 2px solid #eee; padding: 8px; text-align: left; color: #7f8c8d; }
+.tabla-f td { padding: 8px; border-bottom: 1px solid #f9f9f9; }
+
+.win { 
+    background: #f0fff4 !important; 
+    font-weight: bold; 
+    color: #27ae60; 
+    border-left: 4px solid #2ecc71; 
+}
+
+/* TABLA RESUMEN FINAL  */
+.resumen-final { 
+    margin-top: 50px; 
+    padding-top: 30px;
+    border-top: 2px solid #eee; 
+}
+
+.titulo-tabla { 
+    color: var(--primary); 
+    text-align: center; 
+    margin-bottom: 25px; 
+    font-size: 1.8rem; 
+}
+
+.tabla-wrapper { 
+    border-radius: 15px; 
+    overflow: hidden; 
+    border: 1px solid #ddd; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+}
+
+.tabla-resumen { 
+    width: 100%; 
     border-collapse: collapse;
-    border-radius: 10px;
-    overflow: hidden;
-    border-top: 6px solid var(--color-producto);
+    background: var(--white); 
 }
 
-/*  ENCABEZADO */
-.tabla-producto th {
-    background: var(--color-producto);
-    color: white;
+.tabla-resumen thead th { 
+    background: var(--primary); 
+    color: white; 
+    padding: 15px 10px; 
+    text-transform: uppercase; 
+    font-size: 0.75rem; 
+    letter-spacing: 1px; 
 }
 
-/*  CELDAS */
-td, th {
-    padding: 10px;
-    text-align: center;
+.tabla-resumen td { 
+    padding: 12px 10px; 
+    text-align: center; 
+    border: 1px solid #f0f0f0; 
+    font-size: 0.85rem; 
 }
 
-/*  FILAS ALTERNAS */
-tr:nth-child(even) {
-    background-color: #f2f2f2;
+.td-producto { 
+    background: #fafafa; 
+    vertical-align: middle; 
+    font-weight: bold; 
+    color: var(--primary); 
+    min-width: 160px;
 }
 
-
-.tabla-producto tr:hover {
-    background-color: #f1f1f1;
+.txt-destacado { 
+    color: var(--primary); 
+    font-weight: bold; 
 }
 
-/*  MEJOR MODELO */
-.mejor {
-    background-color: #d4edda !important;
-    font-weight: bold;
-    border-left: 6px solid #28a745;
+.txt-negrita { 
+    font-weight: 800;
+    color: #2d3436; 
 }
 
-/*  GRÁFICA */
-canvas {
-    margin-top: 30px;
+.fila-ganadora { 
+    background: #fff9fe !important; 
+}
+
+.badge-gold { 
+    background: #f1c40f; 
+    color: #000; 
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 10px; 
+    font-weight: bold; 
+    display: inline-block;
+    margin-top: 5px;
+}
+
+/* MEDALLA FLOTANTE */
+.medalla { 
+    position: absolute;
+    top: -15px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    background: #f1c40f; 
+    padding: 6px 20px;
+    border-radius: 25px; 
+    font-weight: bold; 
+    font-size: 0.75rem; 
+    border: 3px solid white; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    z-index: 10;
 }

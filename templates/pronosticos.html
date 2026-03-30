@@ -1,103 +1,172 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Pronósticos</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pronósticos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
 <div class="container">
+    <header>
+        <h1>Sistema de Pronósticos</h1>
+    </header>
 
-<h1> Sistema de Pronósticos</h1>
+    <form method="POST" class="formulario">
+        <div class="grupo">
+            <label>Producto</label>
+            <select name="producto">
+                {% for p in productos %}
+                <option value="{{p}}" {% if prod_sel==p %}selected{% endif %}>{{p}}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grupo">
+            <label>Método de Análisis</label>
+            <select name="metodo" id="metodoSel" onchange="validarN()">
+                <option value="todos" {% if metodo_sel=='todos' %}selected{% endif %}>Comparar Todos</option>
+                <option value="promedio" {% if metodo_sel=='promedio' %}selected{% endif %}>Promedio Móvil</option>
+                <option value="suavizacion" {% if metodo_sel=='suavizacion' %}selected{% endif %}>Suavización Exponencial</option>
+                <option value="prophet" {% if metodo_sel=='prophet' %}selected{% endif %}>Prophet</option>
+            </select>
+        </div>
+        <div class="grupo" id="cajaN">
+            <label>Valor de N</label>
+            <input type="number" name="n" id="inputN" value="{{n}}" min="2">
+        </div>
+        <div class="grupo">
+            <label>Meses a Pronosticar</label>
+            <input type="number" name="meses" value="{{meses}}" min="1" max="24">
+        </div>
+        <button type="submit" class="btn-calc">Calcular</button>
+    </form>
 
-<form method="POST" id="formPronostico" class="formulario">
+    <div class="info-corte">
+         <strong>Última fecha registrada:</strong> {{ ultima_fecha }}
+    </div>
 
-    <div class="grupo">
-        <label><b>Producto</b></label>
-        <select name="producto">
-        {% for p in productos %}
-        <option value="{{p}}" {% if producto == p %}selected{% endif %}>{{p}}</option>
+    {% if fichas %}
+    <div class="grid-fichas">
+        {% for f in fichas %}
+        <div class="card {% if metodo_sel == 'todos' and f.es_el_mejor_global %}top-producto{% endif %}" style="border-top: 6px solid {{ f.color_base }};">
+            
+            {% if metodo_sel == 'todos' and f.es_el_mejor_global %}
+                <div class="medalla">Mejor Producto</div>
+            {% endif %}
+
+            <div class="card-head">
+                <h3>{{ f.nombre }}</h3>
+                {% if metodo_sel == 'todos' %}
+                    <span class="mejor-metodo">Mejor: {{ f.mejor_nombre }}</span>
+                {% endif %}
+            </div>
+
+            <div class="stats">
+                <div class="s-item"><strong>{{ f.mejor.data[-1] | round(2) }}</strong><small>Próx. Mes</small></div>
+                <div class="s-item"><strong>{{ (f.mejor.m[0]*100) | round(2) }}%</strong><small>MAPE</small></div>
+                <div class="s-item"><strong>{{ f.mejor.m[3] }}</strong><small>RMSE</small></div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="ch-{{ loop.index }}"></canvas>
+            </div>
+
+            <div class="tabla-f">
+                <table>
+                    <thead><tr><th>Método</th><th>MAPE</th><th>RMSE</th></tr></thead>
+                    <tbody>
+                        {% for m in f.metodos %}
+                        <tr class="{% if metodo_sel == 'todos' and m.id == f.mejor.id %}win{% endif %}">
+                            <td>{{ m.nombre }}</td>
+                            <td>{{ (m.m[0]*100)|round(1) }}%</td>
+                            <td>{{ m.m[3] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            (function() {
+                const ctx = document.getElementById("ch-{{ loop.index }}");
+                let datasets = [{
+                    label: 'Venta Real', data: {{ f.reales | tojson }},
+                    borderColor: '#bdc3c7', borderWidth: 2, pointRadius: 3, fill: false
+                }];
+
+                {% for m in f.metodos %}
+                datasets.push({
+                    label: '{{ m.nombre }}', data: {{ m.data | tojson }}, 
+                    borderColor: '{{ m.color }}', backgroundColor: '{{ m.color }}',
+                    borderWidth: {{ '3' if metodo_sel == 'todos' and m.id == f.mejor.id else '2' }},
+                    pointRadius: 0, fill: false, tension: 0.3
+                });
+                {% endfor %}
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: {{ labels | tojson }}, datasets: datasets },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            })();
+        </script>
         {% endfor %}
-        </select>
     </div>
 
-    <div class="grupo">
-        <label><b>Valor de N</b></label>
-        <input type="number" name="n" value="{{n}}">
+    <div class="resumen-final">
+        <h2 class="titulo-tabla">Resumen de los Métodos Analizados</h2>
+        <div class="tabla-wrapper">
+            <table class="tabla-resumen">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Método</th>
+                        <th>Pronóstico</th>
+                        <th>MAPE</th>
+                        <th>MAPE'</th>
+                        <th>MSE</th>
+                        <th>RMSE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fichas %}
+                        {% for m in f.metodos %}
+                        <tr class="{% if metodo_sel == 'todos' and m.id == f.mejor.id %}fila-ganadora{% endif %}">
+                            {% if loop.first %}
+                            <td rowspan="{{ f.metodos|length }}" class="td-producto">
+                                <strong>{{ f.nombre }}</strong>
+                            </td>
+                            {% endif %}
+                            
+                            <td class="{% if metodo_sel == 'todos' and m.id == f.mejor.id %}txt-destacado{% endif %}">
+                                {{ m.nombre }}
+                            </td>
+                            
+                            <td class="txt-negrita">{{ m.data[-1] | round(2) }}</td>
+                            <td>{{ (m.m[0]*100) | round(2) }}%</td>
+                            <td>{{ (m.m[1]*100) | round(2) }}%</td>
+                            <td>{{ m.m[2] | round(2) }}</td>
+                            <td>{{ m.m[3] | round(2) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <div class="grupo">
-        <label><b>Meses a pronosticar</b></label>
-        <input type="number" name="meses" value="{{meses}}">
-    </div>
-
-    <div class="grupo">
-        <label><b>Método</b></label>
-        <select name="metodo">
-            <option value="todos" {% if metodo=='todos' %}selected{% endif %}>Todos</option>
-            <option value="promedio" {% if metodo=='promedio' %}selected{% endif %}>Promedio</option>
-            <option value="ses" {% if metodo=='ses' %}selected{% endif %}>SES</option>
-            <option value="prophet" {% if metodo=='prophet' %}selected{% endif %}>Prophet</option>
-        </select>
-    </div>
-
-</form>
-
-<div class="card-fecha">
-Último mes registrado: {{ ultima_fecha }}
+    {% endif %}
 </div>
-
-<button type="submit" form="formPronostico" class="btn-calcular">Calcular</button>
-
-{% if resultados %}
-
-<table class="tabla-producto" style="--color-producto: {{ colores[producto] }}">
-<tr>
-<th>Producto</th><th>Modelo</th><th>Pronóstico</th><th>MAPE</th><th>MAPE'</th><th>MSE</th><th>RMSE</th>
-</tr>
-
-{% for c in comparacion %}
-<tr class="{% if mejor_modelo and c.modelo == mejor_modelo.modelo %}mejor{% endif %}">
-<td>{{c.producto}}</td>
-<td>{{c.modelo}}</td>
-<td>{{c.pronostico}}</td>
-<td>{{c.mape}}</td>
-<td>{{c.mape_p}}</td>
-<td>{{c.mse}}</td>
-<td>{{c.rmse}}</td>
-</tr>
-{% endfor %}
-</table>
-
-<canvas id="grafica"></canvas>
 
 <script>
-let labels = {{ periodos | tojson }};
-const reales = {{ resultados.reales | tojson }};
-const promedio = {{ resultados.promedio | tojson }};
-const ses = {{ resultados.ses | tojson }};
-const prophet = {{ resultados.prophet | tojson }};
-const colorProducto = "{{ colores[producto] }}";
-
-new Chart(document.getElementById("grafica"), {
-    type: "line",
-    data: {
-        labels: labels,
-        datasets: [
-            { label: "Real", data: reales, borderColor: "#000" },
-
-            ...(promedio.length ? [{ label: "Promedio", data: promedio, borderColor: "#1abc9c" }] : []),
-            ...(ses.length ? [{ label: "SES", data: ses, borderColor: "#f39c12" }] : []),
-            ...(prophet.length ? [{ label: "Prophet", data: prophet, borderColor: colorProducto }] : [])
-        ]
-    }
-});
+function validarN() {
+    const met = document.getElementById('metodoSel').value;
+    const bloqueado = (met === 'suavizacion' || met === 'prophet');
+    document.getElementById('inputN').disabled = bloqueado;
+    document.getElementById('cajaN').style.opacity = bloqueado ? "0.3" : "1";
+}
+window.onload = validarN;
 </script>
-
-{% endif %}
-
-</div>
 </body>
 </html>
